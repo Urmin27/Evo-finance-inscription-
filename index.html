@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Evo-finance inscription </title>
+  <style>
+    body {
+      background: linear-gradient(135deg, #0d47a1, #1e88e5);
+      font-family: Arial, sans-serif;
+      color: #ddd;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+    h1, h2, h3 {
+      text-align: center;
+    }
+    form {
+      background: #1565c0;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+      width: 100%;
+      max-width: 400px;
+      margin-bottom: 20px;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      border: none;
+      border-radius: 5px;
+      background: #1e88e5;
+      color: #fff;
+      font-size: 16px;
+    }
+    input::placeholder {
+      color: #bbb;
+    }
+    button {
+      width: 100%;
+      background: #0d47a1;
+      color: white;
+      border: none;
+      padding: 12px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 18px;
+      transition: 0.3s;
+    }
+    button:hover {
+      background: #003c8f;
+    }
+    p {
+      text-align: center;
+      margin-top: 10px;
+    }
+    p a {
+      color: #ffcc80;
+      text-decoration: none;
+      font-weight: bold;
+    }
+    p a:hover {
+      text-decoration: underline;
+    }
+    .alert {
+      text-align: center;
+      padding: 10px;
+      border-radius: 5px;
+      margin-top: 10px;
+    }
+    .success {
+      background: #2e7d32;
+      color: white;
+    }
+    .error {
+      background: #d32f2f;
+      color: white;
+    }
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <!-- Formulaire d'inscription -->
+  <div id="registrationContainer">
+    <h2> EVO-FINANCE</h2>
+    <form id="registrationForm">
+      <label for="fullName">Nom complet :</label><br>
+      <input type="text" id="fullName" placeholder="Votre nom complet" required><br><br>
+      
+      <label for="email">Email :</label><br>
+      <input type="email" id="email" placeholder="Votre email" required><br><br>
+      
+      <label for="phoneReg">Numéro de téléphone :</label><br>
+      <input type="text" id="phoneReg" placeholder="Votre numéro de téléphone" required><br><br>
+      
+      <label for="passwordReg">Mot de passe :</label><br>
+      <input type="password" id="passwordReg" placeholder="Votre mot de passe" required><br><br>
+      
+      <label id="captchaQuestion"></label><br>
+      <input type="text" id="captchaInput" placeholder="Réponse" required><br><br>
+      
+      <button type="submit">S'inscrire</button>
+    </form>
+    <p>Vous avez déjà un compte ? <a href="#" id="goToLogin">Se connecter</a></p>
+    <!-- Zone d'affichage des messages alert -->
+    <div id="registrationAlert" class="alert hidden"></div>
+  </div>
+
+  <!-- Formulaire de connexion -->
+  <div id="loginContainer" class="hidden">
+    <h2>Connexion</h2>
+    <form id="loginForm">
+      <label for="emailLogin">Email :</label><br>
+      <input type="email" id="emailLogin" placeholder="Votre email" required><br><br>
+      
+      <label for="passwordLogin">Mot de passe :</label><br>
+      <input type="password" id="passwordLogin" placeholder="Votre mot de passe" required><br><br>
+      
+      <button type="submit">Se connecter</button>
+    </form>
+    <p><a href="#" id="showForgotPassword">Mot de passe oublié ?</a></p>
+    <!-- Formulaire de réinitialisation de mot de passe -->
+    <form id="forgotPasswordForm" class="hidden">
+      <label for="forgotEmail">Entrez votre email :</label><br>
+      <input type="email" id="forgotEmail" placeholder="Votre email" required><br><br>
+      <button type="submit">Réinitialiser le mot de passe</button>
+    </form>
+    <p>Vous n'avez pas de compte ? <a href="#" id="goToRegistration">S'inscrire</a></p>
+  </div>
+
+  <!-- Script Firebase et logique -->
+  <script type="module">
+    // Importation des modules Firebase
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.3.1/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/11.3.1/firebase-auth.js";
+    import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/11.3.1/firebase-database.js";
+
+    // Configuration Firebase (remplacez par vos propres informations)
+    const firebaseConfig = {
+      apiKey: "AIzaSyAHLl76pKxtoT4wrRVetcX2hsWN8Sl3CK0",
+      authDomain: "forme-inscription.firebaseapp.com",
+      projectId: "forme-inscription",
+      storageBucket: "forme-inscription.appspot.com",
+      messagingSenderId: "73735352644",
+      appId: "1:73735352644:web:b5eafded97796f2be3e711"
+    };
+
+    // Initialisation de Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const database = getDatabase(app);
+
+    // Génération du captcha : une simple addition (ex: 3 + 5 = ?)
+    let captchaAnswer = 0;
+    function generateCaptcha() {
+      const num1 = Math.floor(Math.random() * 10) + 1;
+      const num2 = Math.floor(Math.random() * 10) + 1;
+      captchaAnswer = num1 + num2;
+      document.getElementById('captchaQuestion').textContent = `${num1} + ${num2} = ?`;
+    }
+    generateCaptcha();
+
+    // Fonction pour afficher un message d'alerte
+    function showAlert(message, type) {
+      const alertDiv = document.getElementById('registrationAlert');
+      alertDiv.textContent = message;
+      alertDiv.classList.remove('hidden');
+      alertDiv.classList.remove('success', 'error');
+      alertDiv.classList.add(type);
+      setTimeout(() => {
+        alertDiv.classList.add('hidden');
+      }, 5000);
+    }
+
+    // Gestion du formulaire d'inscription
+    document.getElementById('registrationForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      const fullName = document.getElementById('fullName').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const phone = document.getElementById('phoneReg').value.trim();
+      const password = document.getElementById('passwordReg').value;
+      const captchaInput = parseInt(document.getElementById('captchaInput').value.trim(), 10);
+
+      // Vérification du captcha et des champs
+      if (captchaInput !== captchaAnswer) {
+        showAlert("Captcha incorrect ! Veuillez réessayer.", "error");
+        generateCaptcha();
+        return;
+      }
+      if (!fullName || !email || !phone || !password) {
+        showAlert("Veuillez remplir tous les champs.", "error");
+        return;
+      }
+
+      // Création de l'utilisateur avec Firebase Auth
+      createUserWithEmailAndPassword(auth, email, password)
+        .then((userCredential) => {
+          const user = userCredential.user;
+          updateProfile(user, { displayName: fullName })
+            .then(() => {
+              // Enregistrement des informations supplémentaires dans la base de données
+              set(ref(database, 'users/' + user.uid), {
+                fullName: fullName,
+                email: email,
+                phone: phone,
+                bonus: 0,
+                registrationDate: new Date().toLocaleString()
+              })
+              .then(() => {
+                showAlert("Inscription réussie ! Redirection en cours...", "success");
+                setTimeout(() => {
+                  window.location.href = "https://we-evo-finance.vercel.app/";
+                }, 2000);
+              })
+              .catch((error) => {
+                showAlert("Erreur de base de données : " + error.message, "error");
+              });
+            })
+            .catch((error) => {
+              showAlert("Erreur de mise à jour du profil : " + error.message, "error");
+            });
+        })
+        .catch((error) => {
+          if (error.code === 'auth/email-already-in-use') {
+            showAlert("Vous avez déjà un compte, veuillez se connecter.", "error");
+          } else {
+            showAlert("Erreur d'inscription : " + error.message, "error");
+          }
+        });
+    });
+
+    // Gestion du formulaire de connexion
+    document.getElementById('loginForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const email = document.getElementById('emailLogin').value.trim();
+      const password = document.getElementById('passwordLogin').value;
+      if (!email || !password) {
+        showAlert("Veuillez remplir tous les champs.", "error");
+        return;
+      }
+      signInWithEmailAndPassword(auth, email, password)
+        .then((userCredential) => {
+          showAlert("Connexion réussie ! Redirection en cours...", "success");
+          setTimeout(() => {
+            window.location.href = "https://we-evo-finance.vercel.app/";
+          }, 2000);
+        })
+        .catch((error) => {
+          showAlert("Erreur de connexion : " + error.message, "error");
+        });
+    });
+
+    // Basculement entre les formulaires
+    document.getElementById('goToLogin').addEventListener('click', (e) => {
+      e.preventDefault();
+      document.getElementById('registrationContainer').classList.add('hidden');
+      document.getElementById('loginContainer').classList.remove('hidden');
+    });
+    document.getElementById('goToRegistration').addEventListener('click', (e) => {
+      e.preventDefault();
+      document.getElementById('loginContainer').classList.add('hidden');
+      document.getElementById('registrationContainer').classList.remove('hidden');
+      generateCaptcha();
+    });
+
+    // Affichage / Masquage du formulaire "Mot de passe oublié"
+    document.getElementById('showForgotPassword').addEventListener('click', (e) => {
+      e.preventDefault();
+      const forgotForm = document.getElementById('forgotPasswordForm');
+      // Basculer l'affichage du formulaire
+      forgotForm.classList.toggle('hidden');
+    });
+
+    // Gestion du formulaire de réinitialisation de mot de passe
+    document.getElementById('forgotPasswordForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const forgotEmail = document.getElementById('forgotEmail').value.trim();
+      if (!forgotEmail) {
+        showAlert("Veuillez entrer votre email.", "error");
+        return;
+      }
+      sendPasswordResetEmail(auth, forgotEmail)
+        .then(() => {
+          showAlert("Un email de réinitialisation a été envoyé.", "success");
+          document.getElementById('forgotPasswordForm').reset();
+          document.getElementById('forgotPasswordForm').classList.add('hidden');
+        })
+        .catch((error) => {
+          showAlert("Erreur lors de l'envoi de l'email : " + error.message, "error");
+        });
+    });
+  </script>
+</body>
+</html>
